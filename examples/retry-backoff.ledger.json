@@ -1,0 +1,107 @@
+{
+ "fence": {
+  "intent": "Webhook deliveries that hit a 503 are retried with backoff instead of being dropped.",
+  "in_scope": [
+   "src/webhooks/*",
+   "tests/webhooks/*"
+  ],
+  "out_of_scope": [
+   "the admin UI",
+   "changing the queue library",
+   "other HTTP clients"
+  ],
+  "risk": "normal",
+  "head": "9f2c41e",
+  "owner": "@you"
+ },
+ "rounds": [
+  {
+   "n": 1,
+   "head": "4b7d0aa",
+   "diff_lines": 140
+  },
+  {
+   "n": 2,
+   "head": "9f2c41e",
+   "diff_lines": 162
+  }
+ ],
+ "findings": [
+  {
+   "id": "F1",
+   "kind": "bot",
+   "source": "review-bot",
+   "made_on": "4b7d0aa",
+   "path": "src/webhooks/deliver.py",
+   "line": 58,
+   "severity": "blocker",
+   "claim": "Retries also fire on 400, so a bad payload is sent five times.",
+   "verdict": "FIX",
+   "commit": "9f2c41e",
+   "evidence": "[ran] new test test_no_retry_on_4xx failed before the change and passes on 9f2c41e",
+   "reply": "Only 429 and 5xx retry now; 4xx goes straight to the dead-letter table."
+  },
+  {
+   "id": "F2",
+   "kind": "model",
+   "source": "second-model reviewer",
+   "made_on": "4b7d0aa",
+   "path": "src/webhooks/deliver.py",
+   "line": 61,
+   "severity": "should",
+   "claim": "Backoff has no jitter, so many failed hooks retry at the same instant.",
+   "verdict": "FIX",
+   "commit": "9f2c41e",
+   "evidence": "[read] deliver.py@9f2c41e line 63 now adds random 0-30% jitter; test_backoff_bounds checks the range",
+   "reply": "Added bounded jitter."
+  },
+  {
+   "id": "F3",
+   "kind": "bot",
+   "source": "review-bot",
+   "made_on": "4b7d0aa",
+   "path": "src/webhooks/deliver.py",
+   "line": 12,
+   "severity": "should",
+   "claim": "requests.Session is not thread-safe here.",
+   "verdict": "WRONG",
+   "evidence": "[traced] deliver() is only called from the single worker loop in worker.py@9f2c41e; no threads share the session",
+   "reply": "The session is owned by one worker process and never shared across threads (see worker.py run_loop).",
+   "posted": true
+  },
+  {
+   "id": "F4",
+   "kind": "human",
+   "source": "@teammate",
+   "made_on": "4b7d0aa",
+   "path": "src/http/client.py",
+   "severity": "should",
+   "claim": "The billing client has the same drop-on-503 problem.",
+   "verdict": "LATER",
+   "reply": "Agreed it is the same bug; the billing client is outside this PR, so I opened it as a follow-up.",
+   "posted": true
+  },
+  {
+   "id": "F5",
+   "kind": "model",
+   "source": "third-model reviewer",
+   "made_on": "4b7d0aa",
+   "path": "src/webhooks/deliver.py",
+   "line": 58,
+   "severity": "blocker",
+   "claim": "4xx responses are retried.",
+   "verdict": "DUP",
+   "dup_of": "F1"
+  },
+  {
+   "id": "F6",
+   "kind": "bot",
+   "source": "review-bot",
+   "made_on": "9f2c41e",
+   "path": "src/webhooks/deliver.py",
+   "line": 70,
+   "severity": "nit",
+   "claim": "Rename max_tries to max_attempts."
+  }
+ ]
+}

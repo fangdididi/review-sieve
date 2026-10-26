@@ -1,0 +1,35 @@
+{
+ "fence": {
+  "intent": "优惠券到期前 24 小时只给用户发一次提醒，不再重复推送。",
+  "in_scope": ["jobs/coupon_reminder/*", "tests/coupon_reminder/*"],
+  "out_of_scope": ["推送文案", "短信通道", "优惠券发放逻辑"],
+  "risk": "sensitive",
+  "head": "c81e3d0",
+  "owner": "@我"
+ },
+ "rounds": [
+  {"n": 1, "head": "a10f9b2", "diff_lines": 60},
+  {"n": 2, "head": "b55e0c7", "diff_lines": 88},
+  {"n": 3, "head": "c81e3d0", "diff_lines": 131}
+ ],
+ "findings": [
+  {"id": "Z1", "kind": "bot", "source": "审查机器人", "made_on": "a10f9b2", "path": "jobs/coupon_reminder/run.py", "line": 34,
+   "severity": "blocker", "claim": "两个任务实例同时跑会各发一次提醒。",
+   "verdict": "FIX", "commit": "b55e0c7",
+   "evidence": "[ran] 并发测试 test_two_workers_one_push 在 c81e3d0 上通过，修改前失败",
+   "reply": "发送前先写入 (user_id, coupon_id) 唯一记录，写入失败就跳过。"},
+  {"id": "Z2", "kind": "owner", "source": "@我", "made_on": "b55e0c7", "path": "jobs/coupon_reminder/run.py",
+   "severity": "should", "claim": "时区按服务器时间算不对，要按用户所在时区。",
+   "verdict": "ASK",
+   "reply": "用户表里有 35% 的记录没有时区字段。先按用户时区、缺失时回退到北京时间，可以吗？"},
+  {"id": "Z3", "kind": "model", "source": "另一模型审查", "made_on": "b55e0c7", "path": "jobs/coupon_reminder/run.py", "line": 50,
+   "severity": "should", "claim": "唯一记录表没有清理，会无限增长。",
+   "verdict": "LATER",
+   "reply": "确实会增长，但每月约 2 万行，不影响这次修复；已记为后续任务。"},
+  {"id": "Z4", "kind": "bot", "source": "审查机器人", "made_on": "b55e0c7", "path": "jobs/coupon_reminder/run.py", "line": 41,
+   "severity": "should", "claim": "except 吞掉了所有异常。",
+   "verdict": "WRONG", "raised": 3,
+   "evidence": "[read] run.py@c81e3d0 第 41 行只捕获 IntegrityError，其他异常会继续抛出",
+   "reply": "这里只捕获唯一约束冲突，用来表示“已经发过”，其他异常不受影响。"}
+ ]
+}
